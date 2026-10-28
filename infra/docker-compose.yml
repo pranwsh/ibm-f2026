@@ -1,0 +1,125 @@
+name: signal-pipeline
+services:
+  postgres:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_postgres_password}
+      POSTGRES_DB: ${POSTGRES_DB:-app}
+    ports: ["127.0.0.1:${POSTGRES_PORT:-5432}:5432"]
+    volumes: ["pgdata:/var/lib/postgresql", "./postgres/init:/docker-entrypoint-initdb.d:ro"]
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [stack]
+  kafka:
+    image: apache/kafka:4.0.0
+    hostname: kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: INTERNAL://:29092,EXTERNAL://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://127.0.0.1:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_HEAP_OPTS: ${KAFKA_HEAP_OPTS:--Xms256m -Xmx768m}
+    ports: ["127.0.0.1:${KAFKA_PORT:-9092}:9092"]
+    volumes: ["kafka_data:/var/lib/kafka/data"]
+    healthcheck:
+      test: [CMD-SHELL, "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:29092 --list >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+    networks: [stack]
+  kafka-init:
+    image: apache/kafka:4.0.0
+    depends_on:
+      kafka: {condition: service_healthy}
+    volumes: ["./kafka/init-topics.sh:/init-topics.sh:ro"]
+    entrypoint: ["/bin/bash", "/init-topics.sh"]
+    restart: "no"
+    healthcheck:
+      test: [CMD-SHELL, "test -f /tmp/topics-ready"]
+      interval: 5s
+      timeout: 2s
+      retries: 3
+    networks: [stack]
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.8-alpine
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-analytics}
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-dev_clickhouse_password}
+    ports:
+      - "127.0.0.1:${CLICKHOUSE_HTTP_PORT:-8123}:8123"
+      - "127.0.0.1:${CLICKHOUSE_NATIVE_PORT:-9000}:9000"
+    volumes: ["clickhouse_data:/var/lib/clickhouse", "./clickhouse/init:/docker-entrypoint-initdb.d:ro"]
+    healthcheck:
+      test: [CMD-SHELL, "clickhouse-client --user default --password $${CLICKHOUSE_PASSWORD} --query 'SELECT 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [stack]
+  vector:
+    image: timberio/vector:0.49.0-alpine
+    command: ["--config", "/etc/vector/vector.yaml"]
+    ports: ["127.0.0.1:${VECTOR_API_PORT:-8686}:8686"]
+    volumes: ["../pipeline/vector/vector.yaml:/etc/vector/vector.yaml:ro", "vector_data:/var/lib/vector"]
+    depends_on: {kafka-init: {condition: service_completed_successfully}, clickhouse: {condition: service_healthy}}
+    healthcheck:
+      test: [CMD, vector, validate, /etc/vector/vector.yaml]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks: [stack]
+  api:
+    build: ../backend
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-dev_postgres_password}@postgres:5432/${POSTGRES_DB:-app}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
+    ports: ["127.0.0.1:${API_PORT:-8000}:8000"]
+    depends_on: {postgres: {condition: service_healthy}, kafka-init: {condition: service_completed_successfully}}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [stack]
+  frontend:
+    build: ../frontend
+    ports: ["127.0.0.1:${FRONTEND_PORT:-5173}:5173"]
+    depends_on: {api: {condition: service_healthy}}
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:5173').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [stack]
+  detector:
+    build: ../detector
+    environment: {KAFKA_BOOTSTRAP_SERVERS: kafka:29092}
+    ports: ["127.0.0.1:${DETECTOR_PORT:-8081}:8081"]
+    depends_on: {kafka-init: {condition: service_completed_successfully}}
+    healthcheck:
+      test: [CMD, /app/detector, --healthcheck]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [stack]
+volumes:
+  pgdata: {}
+  kafka_data: {}
+  clickhouse_data: {}
+  vector_data: {}
+networks:
+  stack: {}
