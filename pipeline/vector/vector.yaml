@@ -1,0 +1,25 @@
+data_dir: /var/lib/vector
+api:
+  enabled: true
+  address: 0.0.0.0:8686
+sources:
+  kafka_raw:
+    type: kafka
+    bootstrap_servers: kafka:29092
+    group_id: vector-normalizer
+    topics: [raw-events]
+    decoding: {codec: json}
+transforms:
+  normalized:
+    type: remap
+    inputs: [kafka_raw]
+    source: |-
+      . = .
+sinks:
+  normalized_events:
+    type: kafka
+    inputs: [normalized]
+    bootstrap_servers: kafka:29092
+    topic: normalized-events
+    encoding: {codec: json}
+    key_field: source_id
