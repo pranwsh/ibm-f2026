@@ -1,1 +1,18 @@
-{"name":"signal-pipeline-ui","private":true,"version":"0.1.0","type":"module","scripts":{"dev":"vite --host 0.0.0.0","test":"node --test","lint":"echo 'No lint rules configured'","format":"echo 'No formatter configured'"},"dependencies":{"vite":"^6.0.0"},"devDependencies":{}}
+{
+  "name": "signal-pipeline-ui",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "test": "node --test",
+    "lint": "prettier --check index.html package.json src",
+    "format": "prettier --write index.html package.json src"
+  },
+  "dependencies": {
+    "vite": "^6.0.0"
+  },
+  "devDependencies": {
+    "prettier": "^3.5.0"
+  }
+}
