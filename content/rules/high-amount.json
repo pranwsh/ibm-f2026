@@ -1,1 +1,0 @@
-{"rule_id":"high-amount","description":"Emit a signal when a normalized event amount reaches the configured threshold.","threshold_env":"DETECTOR_AMOUNT_THRESHOLD","default_threshold":10000}

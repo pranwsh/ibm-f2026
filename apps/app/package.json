@@ -1,0 +1,28 @@
+{
+  "name": "signal-pipeline-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "tsrs --noEmit",
+    "lint": "oxlint .",
+    "format": "oxfmt index.html package.json tsconfig.json src",
+    "format:check": "oxfmt --check index.html package.json tsconfig.json src"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "^1.120.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "oxfmt": "^0.35.0",
+    "oxlint": "^1.50.0",
+    "tsrs": "0.20.1-ts7.1.0-beta",
+    "typescript": "^6.0.0",
+    "vite": "^7.0.0"
+  }
+}

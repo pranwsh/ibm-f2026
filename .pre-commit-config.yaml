@@ -7,3 +7,23 @@ repos:
       - id: check-yaml
       - id: check-merge-conflict
       - id: detect-private-key
+  - repo: local
+    hooks:
+      - id: typecheck
+        name: TypeScript typecheck (tsrs)
+        entry: make typecheck
+        language: system
+        pass_filenames: false
+        files: ^apps/app/
+      - id: oxlint
+        name: Lint (oxlint)
+        entry: make lint
+        language: system
+        pass_filenames: false
+        files: ^apps/app/
+      - id: oxfmt
+        name: Format check (oxfmt)
+        entry: make format-check
+        language: system
+        pass_filenames: false
+        files: ^apps/app/

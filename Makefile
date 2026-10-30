@@ -1,24 +1,18 @@
-SHELL := /bin/bash
-COMPOSE = docker compose --env-file .env -f infra/docker-compose.yml
-.PHONY: up down test lint fmt
-up:
-	@test -f .env || cp .env.example .env
-	$(COMPOSE) up -d --build --wait --wait-timeout 300
-
-down:
-	$(COMPOSE) down
-
-test:
-	cd backend && uv sync --group dev && uv run pytest -q
-	cd detector && cargo test
-	cd frontend && bun test
-
+SHELL := bash
+APP := apps/app
+.PHONY: install dev build typecheck lint format format-check fmt
+install:
+	npm ci --prefix $(APP)
+dev:
+	npm run dev --prefix $(APP)
+build:
+	npm run build --prefix $(APP)
+typecheck:
+	npm run typecheck --prefix $(APP)
 lint:
-	cd backend && uv sync --group dev && uv run ruff check .
-	cd detector && cargo clippy --all-targets -- -D warnings
-	cd frontend && bun run lint
-
-fmt:
-	cd backend && uv sync --group dev && uv run ruff format .
-	cd detector && cargo fmt
-	cd frontend && bun run format
+	npm run lint --prefix $(APP)
+format:
+	npm run format --prefix $(APP)
+format-check:
+	npm run format:check --prefix $(APP)
+fmt: format

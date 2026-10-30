@@ -1,25 +1,23 @@
-# Signal pipeline
+# Signal Pipeline
 
-Local development scaffold for the event pipeline.
+A minimal React and TypeScript application scaffold, built with Vite and TanStack Router. It does not yet connect to an API. Ingestion and detection are deferred to separate work.
 
 ## Quick start
 
-Requirements: Docker Engine with Compose v2. Nix and direnv are optional developer tools.
+Requires Node.js 22.12+ (or 20.19+) and npm. From the repository root:
 
 ```sh
-cp .env.example .env
-make up
+make install
+make dev
 ```
 
-See [Development](docs/development.md) for tool setup and commands, [Services](docs/services.md) for the local stack and slim profile, and [Kafka topics](docs/kafka-topics.md) for topic configuration. The API, frontend, and detector are currently scaffolds; the full event pipeline is not implemented.
+Open the local URL printed by Vite. See [Development](docs/development.md) for all commands and pre-commit setup.
 
 ## Repository layout
 
-- `backend/`: Python API scaffold
-- `detector/`: Rust detector scaffold
-- `frontend/`: Vite frontend scaffold
-- `pipeline/vector/`: Vector configuration
-- `content/rules/`: detection rules
-- `fixtures/`: sample data
-- `contracts/`: shared schemas
-- `infra/`: Compose stack and infrastructure configuration
+- `apps/app/`: frontend application
+- `content/rules/`: reserved for detection rules
+- `docs/`: development documentation
+- `fixtures/`: reserved for sample data
+
+Future independently running services belong under `services/api/` and `services/detector/`; shared packages, if needed, belong under `packages/` (for example `packages/contracts/`). Those components are not part of this scaffold.
